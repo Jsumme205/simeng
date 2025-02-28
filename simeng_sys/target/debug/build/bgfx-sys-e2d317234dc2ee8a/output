@@ -1,0 +1,77 @@
+OUT_DIR = Some(/home/jack/Documents/simeng/simeng_sys/target/debug/build/bgfx-sys-e2d317234dc2ee8a/out)
+OPT_LEVEL = Some(0)
+TARGET = Some(x86_64-unknown-linux-gnu)
+HOST = Some(x86_64-unknown-linux-gnu)
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+RUSTC_WRAPPER = Some(/home/jack/.local/share/zed/languages/rust-analyzer/rust-analyzer-2025-02-10)
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+DEBUG = Some(true)
+CARGO_CFG_TARGET_FEATURE = Some(fxsr,sse,sse2)
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+CARGO_ENCODED_RUSTFLAGS = Some()
+cargo:warning=In file included from bimg/src/image_decode.cpp:22:
+cargo:warning=bimg/3rdparty/tinyexr/tinyexr.h: In function 'int tinyexr::DecodeTiledLevel(EXRImage*, const EXRHeader*, const OffsetData&, const std::vector<long unsigned int>&, int, const unsigned char*, size_t, std::string*)':
+cargo:warning=bimg/3rdparty/tinyexr/tinyexr.h:4683:12: warning: 'void* calloc(size_t, size_t)' sizes specified with 'sizeof' in the earlier argument and not in the later argument [-Wcalloc-transposed-args]
+cargo:warning= 4683 |     calloc(sizeof(EXRTile), static_cast<size_t>(num_tiles)));
+cargo:warning=      |            ^~~~~~~~~~~~~~~
+cargo:warning=bimg/3rdparty/tinyexr/tinyexr.h:4683:12: note: earlier argument should specify number of elements, later size of each element
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+exit status: 0
+cargo:rerun-if-env-changed=AR_x86_64-unknown-linux-gnu
+AR_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=AR_x86_64_unknown_linux_gnu
+AR_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_AR
+HOST_AR = None
+cargo:rerun-if-env-changed=AR
+AR = None
+cargo:rerun-if-env-changed=ARFLAGS_x86_64-unknown-linux-gnu
+ARFLAGS_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=ARFLAGS_x86_64_unknown_linux_gnu
+ARFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_ARFLAGS
+HOST_ARFLAGS = None
+cargo:rerun-if-env-changed=ARFLAGS
+ARFLAGS = None
+cargo:rustc-link-lib=static=bgfx_sys
+cargo:rustc-link-search=native=/home/jack/Documents/simeng/simeng_sys/target/debug/build/bgfx-sys-e2d317234dc2ee8a/out
+cargo:rustc-link-lib=pthread
+cargo:rustc-link-lib=stdc++
+cargo:rustc-link-lib=GL
+cargo:rustc-link-lib=X11

@@ -1,0 +1,14 @@
+[package]
+name = "simeng_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+simeng_sys = { path = "/home/jack/Documents/simeng/simeng_sys" }
+
+
+[features]
+std = ["simeng_sys/std"]
+default = ["std"]
+async_support = []
+default_listeners = []

@@ -1,0 +1,2 @@
+cargo:rustc-link-lib=glfw
+cargo:rustc-link-lib=GL

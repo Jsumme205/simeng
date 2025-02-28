@@ -1,0 +1,7 @@
+[package]
+name = "simeng_testing"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+simeng_sys = { path = "/home/jack/Documents/simeng/simeng_sys" }

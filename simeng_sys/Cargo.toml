@@ -1,0 +1,17 @@
+[package]
+name = "simeng_sys"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+small_vec = { path = "/home/jack/Documents/simeng/small_vec" }
+spin = "0.9.8"
+
+[build-dependencies]
+bindgen = "*"
+
+[features]
+default = ["std", "default_impls"]
+default_impls = []
+std = []
