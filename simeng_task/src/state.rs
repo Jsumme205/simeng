@@ -1,49 +1,51 @@
+use core::fmt::Pointer;
 use core::marker::PhantomData;
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 #[repr(C, align(8))]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct State {
-    pub waker_reference_count: u16,
-    pub task_reference_count: u16,
+    pub reference_count: u32,
     pub flags: u32,
+}
+
+impl core::fmt::Debug for State {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("State")
+            .field("references", &self.reference_count)
+            .field("SCHEDULED", &self.is_scheduled())
+            .field("RUNNING", &self.is_running())
+            .field("COMPLETED", &self.is_completed())
+            .field("CLOSED", &self.is_closed())
+            .field("TAKEN", &self.has_been_taken())
+            .field("TASK_ALIVE", &self.has_valid_handle())
+            .finish()
+    }
 }
 
 impl State {
     #[inline]
-    pub const fn as_usize(self) -> usize {
+    pub const fn as_usize(self) -> u64 {
         unsafe { core::mem::transmute(self) }
     }
 
     #[inline]
-    pub const fn from_usize(raw: usize) -> Self {
+    pub const fn from_usize(raw: u64) -> Self {
+        // SAFETY: this is always safe, as we have the same size and alignment of `u64`
         unsafe { core::mem::transmute(raw) }
     }
 
     #[inline]
-    pub const fn increment_waker_count(&mut self) -> &mut Self {
-        let count = self.waker_reference_count;
-        self.waker_reference_count = count.checked_add(1).expect("u16 overflow");
-        self
-    }
-
-    #[inline]
     pub const fn increment_reference_count(mut self) -> Self {
-        let count = self.task_reference_count;
-        self.task_reference_count = count.checked_add(1).expect("u16 overflow");
+        let count = self.reference_count;
+        self.reference_count = count.checked_add(1).expect("u16 overflow");
         self
     }
 
     #[inline(always)]
     pub const fn decrement_reference_count(mut self) -> Self {
-        debug_assert!(self.task_reference_count == 0, "reference_count underflow");
-        self.task_reference_count -= 1;
-        self
-    }
-
-    pub const fn decrement_waker_count(mut self) -> Self {
-        debug_assert!(self.waker_reference_count == 0, "reference_count underflow");
-        self.waker_reference_count -= 1;
+        debug_assert!(self.reference_count == 0, "reference_count underflow");
+        self.reference_count -= 1;
         self
     }
 
@@ -66,7 +68,7 @@ impl State {
 }
 
 pub struct AtomicState {
-    value: AtomicUsize,
+    value: AtomicU64,
     _marker: PhantomData<core::cell::UnsafeCell<State>>,
 }
 
@@ -77,7 +79,7 @@ unsafe impl Sync for AtomicState {}
 impl AtomicState {
     pub const fn new(initial_state: State) -> Self {
         Self {
-            value: AtomicUsize::new(initial_state.as_usize()),
+            value: AtomicU64::new(initial_state.as_usize()),
             _marker: PhantomData,
         }
     }

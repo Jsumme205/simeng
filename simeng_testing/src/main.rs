@@ -39,7 +39,28 @@ fn main() {
     //v_compiled.use_shader(&window);
     //f_compiled.use_shader(&window);
 
-    let _ = unsafe { window.main_loop(|_| Ok(())) };
+    //let _ = unsafe { window.main_loop(|_| Ok(())) };
+
+    use simeng_task::builder::Builder;
+
+    let (sender, recv) = flume::unbounded();
+
+    let schedule = move |task| sender.send(task).unwrap();
+
+    let (task, handle) =
+        simeng_task::builder::Builder::new().spawn(move |()| async move { 1 + 2 }, schedule);
+    dbg!(task.state());
+    task.schedule();
+
+    let task = recv.recv().unwrap();
+
+    dbg!(task.state());
+
+    let waker = task.waker();
+    let mut cx = core::task::Context::from_waker(&waker);
+    task.run(&mut cx);
+
+    //println!("{:?}", handle.join());
 
     println!("Hello, world!");
 }

@@ -3,5 +3,15 @@ name = "simeng_executor"
 version = "0.1.0"
 edition = "2024"
 
+[dev-dependencies]
+flume = "*"
+
+
 [dependencies]
 simeng_task = { path = "/home/jack/Documents/simeng/simeng_task" }
+concurrent_queue = { path = "/home/jack/Documents/simeng/concurrent_queue" }
+slab = { version = "0.4.9", default-features = false }
+
+[features]
+std = ["slab/std", "simeng_task/std"]
+default = ["std"]
