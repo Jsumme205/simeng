@@ -58,7 +58,8 @@ impl AsyncDynamicComponent<GameState> for PlayerComponent {
       Ok(()) => {},
       Err(e) => return Err(())
     }
-    // other logic, etc...   
+    // other logic, etc...
+  }   
 }
 
 #[yage::main]
