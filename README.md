@@ -52,7 +52,7 @@ impl AsyncDynamicComponent<GameState> for PlayerComponent {
   fn poll_update(self: Pin<&mut Self, cx: &mut Context<'_>, render_context: &mut RenderContext<GameState>) -> Poll<Result<(), ()>> {
     // update logic here, read stream for networking updates, etc
     let mut stream = render_context.state().game_stream;
-    let mut buf = SmallVec::with_capacity(core::mem::size_of<{some serializeable struct}>());
+    let mut buf = SmallVec::with_capacity(core::mem::size_of<usize>());
     let mut buf = ReadBuf::new(&mut *buf);
     match core::task::ready!(Pin::new(&mut *stream).poll_read(cx, buf) {
       Ok(()) => {},
