@@ -6,7 +6,7 @@ This game engine is slightly based off of `javax.swing` API's, in the sense that
 for example, 
 
 one could write:
-```
+```rust
 use yage_core::{Engine, EngineBuilder, component::{sync::{AsyncComponent, AsyncDynamicComponent}, RenderContext}};
 use yage_components::mesh::Mesh2D;
 use yage_net::TcpStream;
