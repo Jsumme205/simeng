@@ -62,10 +62,10 @@ impl AsyncDynamicComponent<GameState> for PlayerComponent {
   }   
 }
 
-#[yage::main]
-async fn main() {
+
+fn main() {
   let mut engine = EngineBuilder::new()
-  .with_state(GameState {
+  .with_state(async |_| GameState {
     player_health: 100,
     player_status: PlayerStatus::Chilling,
     game_stream: TcpStream::connect().await.unwrap()
@@ -84,7 +84,7 @@ async fn main() {
     }
   }).unwrap();
 
-  engine.run().await.unwrap()
+  engine.run().unwrap()
 }
  
 ```
