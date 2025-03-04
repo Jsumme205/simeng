@@ -6,7 +6,8 @@ use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct State {
     pub reference_count: u32,
-    pub flags: u32,
+    pub flags: u16,
+    pub tag: u16,
 }
 
 impl core::fmt::Debug for State {
@@ -50,18 +51,18 @@ impl State {
     }
 
     #[inline(always)]
-    pub const fn set_flag(mut self, flag: u32) -> Self {
+    pub const fn set_flag(mut self, flag: u16) -> Self {
         self.flags |= flag;
         self
     }
 
     #[inline(always)]
-    pub const fn has_flag_set(&self, flag: u32) -> bool {
+    pub const fn has_flag_set(&self, flag: u16) -> bool {
         (self.flags & flag) != 0
     }
 
     #[inline(always)]
-    pub const fn clear_flag(mut self, flag: u32) -> Self {
+    pub const fn clear_flag(mut self, flag: u16) -> Self {
         self.flags &= !flag;
         self
     }
