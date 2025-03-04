@@ -1,0 +1,10 @@
+[package]
+name = "simeng_testing"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+simeng_sys = { path = "/home/jack/Documents/yage/yage_sys" }
+simeng_task = { path = "/home/jack/Documents/yage/yage_task" }
+simeng_executor = { path = "/home/jack/Documents/yage/yage_executor" }
+flume = "0.11.1"
