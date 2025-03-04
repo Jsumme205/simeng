@@ -2,6 +2,16 @@ use core::fmt::Pointer;
 use core::marker::PhantomData;
 use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
+
+/// the state of a task
+/// this carries 3 fields: a reference count, flags, and a tag
+/// the `reference_count` is a combined total of `Wakers` and `Tasks`
+///
+/// this is always garanteed to have the same size and align as `u64`
+///
+/// A note on tags:
+/// the `tag` field allows you to atomically store a 16-bit tag that could signify certain properties of a task
+/// by default, `Tag` is the unit type `()`, and has a value of 0 
 #[repr(C, align(8))]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct State {
@@ -25,11 +35,15 @@ impl core::fmt::Debug for State {
 }
 
 impl State {
+    /// turns `State` into a `u64`.
+    /// this is used internally, to fit it into an `AtomicU64`
     #[inline]
     pub const fn as_usize(self) -> u64 {
         unsafe { core::mem::transmute(self) }
     }
 
+    /// the inverse of `State::as_usize`
+    /// used internally, to convert between `State` and `AtomicU64`
     #[inline]
     pub const fn from_usize(raw: u64) -> Self {
         // SAFETY: this is always safe, as we have the same size and alignment of `u64`
@@ -68,6 +82,8 @@ impl State {
     }
 }
 
+/// Atomic operations on `State`
+/// internally, this is just an `AtomicU64`, bt it behaves like a `State` struct
 pub struct AtomicState {
     value: AtomicU64,
     _marker: PhantomData<core::cell::UnsafeCell<State>>,
