@@ -5,6 +5,10 @@ use core::cell::UnsafeCell;
 use core::marker::PhantomData;
 use core::task::Waker;
 
+/// the header of a `Task`
+///
+/// this carries various bookkeeping fields, like the state and the actual vtable
+/// this also carries 2 different fields for metadata, including a 16-bit `Tag`, as well as a `Metadata` field
 pub(crate) struct Header<Metadata, T: Tag = ()> {
     pub(crate) state: AtomicState,
     pub(crate) awaiter: UnsafeCell<Option<Waker>>,
@@ -41,6 +45,10 @@ where
     }
 }
 
+/// the main trait for "tagging" a task.
+/// this can be used to atomically indicate certain states or extra metadata
+/// the only requirement is that it can fit into a `u16`
+/// primitives with less than a 16-bit size implement this trait.
 pub trait Tag {
     fn from_u16(val: u16) -> Self;
 
