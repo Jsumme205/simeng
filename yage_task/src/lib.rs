@@ -2,6 +2,7 @@
 
 use core::marker::PhantomData;
 use core::mem;
+use core::sync::atomic::Ordering;
 use core::task::{RawWaker, Waker};
 use core::{future::Future, ptr::NonNull};
 
@@ -52,7 +53,6 @@ where
     }
 }
 
-use alloc::thread::park;
 use header::{Header, Tag};
 use layout::ConstLayout;
 use task::Task;
@@ -207,6 +207,24 @@ where
         }
     }
 
+    unsafe fn wake(ptr: *const ()) {
+        if core::mem::size_of::<S>() > 0 {
+            unsafe {
+                Self::wake_by_ref(ptr);
+                Self::drop_waker(ptr);
+            }
+            return;
+        }
+
+        let raw = Self::from_ptr(ptr);
+
+        let mut state = unsafe { (*raw.header).state.load(Ordering::Acquire) };
+    }
+
+    unsafe fn wake_by_ref(ptr: *const ()) {}
+
+    unsafe fn drop_waker(ptr: *const ()) {}
+
     unsafe fn drop_future(ptr: *const ()) {
         let raw = Self::from_ptr(ptr);
 
@@ -216,7 +234,8 @@ where
     }
 
     unsafe fn get_output(ptr: *mut ()) -> *mut () {
-        core::ptr::null_mut()
+        let raw = Self::from_ptr(ptr);
+        raw.future as *mut ()
     }
 
     unsafe fn drop_reference(ptr: *const ()) {}
