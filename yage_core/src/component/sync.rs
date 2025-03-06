@@ -1,41 +1,60 @@
-use super::RenderContext;
+use super::{RenderContext, BaseComponent};
 use core::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
 
-pub trait AsyncComponent<S> {
+pub struct AsyncRenderContext<'a, S> {
+    cx: &'a mut Context<'a>,
+    render_context: &'a mut RenderContext<S>
+}
+
+impl<'a, S> core::ops::Deref for AsyncRenderContext<'a, S> {
+    type Target = RenderContext<S>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.render_context
+    }
+}
+
+impl<'a, S> core::ops::DerefMut for AsyncRenderContext<'a, S> {
+   fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.render_context
+   }
+}
+
+pub trait AsyncComponent: BaseComponent  {
     type Error;
+    type State;
 
     fn poll_draw(
         self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        render_context: &mut RenderContext<S>,
+        ctx: &mut AsyncRenderContext<'_, Self::State>,
     ) -> Poll<Result<(), Self::Error>>;
 }
 
-pub trait AsyncComponentExt<S>: AsyncComponent<S> + Unpin {
-    fn draw<'a>(&'a mut self, render_context: &'a mut RenderContext<S>) -> Draw<'a, Self, S> {
+pub trait AsyncComponentExt: AsyncComponent + Unpin {
+    fn draw<'a>(&'a mut self, render_context: &'a mut RenderContext<Self::State>) -> Draw<'a, Self> {
         Draw::new(self, render_context)
     }
 }
 
-pub struct Draw<'a, C: ?Sized, S> {
+pub struct Draw<'a, C: ?Sized + AsyncComponent> {
     component: &'a mut C,
-    render_context: &'a mut RenderContext<S>,
+    render_context: &'a mut RenderContext<C::State>,
 }
 
-pub(super) struct DrawProjection<'__pin, C: ?Sized, S> {
+pub(super) struct DrawProjection<'__pin, C: ?Sized + AsyncComponent> {
     component: Pin<&'__pin mut C>,
-    render_context: &'__pin mut RenderContext<S>,
+    render_context: &'__pin mut RenderContext<C::State>,
 }
 
-impl<'a, C, S> Draw<'a, C, S>
+impl<'a, C> Draw<'a, C>
 where
-    C: AsyncComponent<S> + ?Sized + Unpin,
+    C: AsyncComponent + ?Sized + Unpin,
 {
-    pub(super) fn new(component: &'a mut C, ctx: &'a mut RenderContext<S>) -> Self {
+    pub(super) fn new(component: &'a mut C, ctx: &'a mut RenderContext<C::State>) -> Self {
         Self {
             component,
             render_context: ctx,
@@ -54,9 +73,9 @@ where
     }
 }
 
-impl<'a, C, S> Future for Draw<'a, C, S>
+impl<'a, C> Future for Draw<'a, C>
 where
-    C: AsyncComponent<S> + ?Sized + Unpin,
+    C: AsyncComponent + ?Sized + Unpin,
 {
     type Output = Result<(), C::Error>;
 
@@ -65,7 +84,11 @@ where
             component,
             render_context,
         } = self.project();
-        component.poll_draw(cx, render_context)
+        let mut ctx = AsyncRenderContext {
+            render_context: &mut *render_context,
+            cx
+        }
+        component.poll_draw(&mut ctx)
     }
 }
 
