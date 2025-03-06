@@ -5,6 +5,23 @@ use simeng_sys::component::ComponentVTable;
 //#[cfg(feature = "async_support")]
 pub mod sync;
 
+#[cfg(feature = "unstable")]
+mod __glue;
+
+#[cfg(not(feature = "unstable"))]
+mod __glue {
+    // this is here in the case that unstable is turned off
+    // it makes it so ALL types implement this trait
+    // virtually cancelling it out
+    use core::marker::PhantomData;
+    use super::BaseComponent;
+
+    pub struct Valid<T: ?Sized>(PhantomData<T>);
+    pub unsafe trait Subtrait<T: ?Sized> {}
+
+    unsafe impl<T: ?Sized> Subtrait<dyn BaseComponent> for Valid<T> {}
+}
+
 use crate::Dimensions;
 
 pub struct RenderContext<S> {
@@ -21,7 +38,10 @@ impl<S> RenderContext<S> {
     }
 }
 
-pub trait BaseComponent {
+pub trait BaseComponent 
+where
+    __glue::Valid<Self>: __glue::Subtrait<dyn BaseComponent>
+{
     fn dimensions(&self) -> Dimensions;
 
     fn topmost_left_point(&self) -> (u32, u32);
