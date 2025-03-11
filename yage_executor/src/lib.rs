@@ -19,6 +19,12 @@ use slab::Slab;
 /// TODO: when stablized, change this back to private
 pub mod handle;
 
+#[cfg(feature = "std")]
+mod net;
+
+#[cfg(feature = "std")]
+mod registrations;
+
 mod sealed {
     pub trait Sealed {}
 
