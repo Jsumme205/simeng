@@ -9,9 +9,8 @@ use std::alloc;
 
 use crate::error;
 
-
 /// the id of an component
-/// 
+///
 /// this is subject to change, but for now it is a `usize`
 pub type ComponentId = usize;
 
@@ -34,32 +33,37 @@ pub struct RenderContext<S> {
 ///
 /// =========== Functions ================
 ///
-/// dimensions: unsafe fn(*const ()) -> (u32, u32)
+/// dimensions: `unsafe fn(*const ()) -> (u32, u32)`
+///
 ///    returns a tuple of values, as (width, height)
-/// 
-/// point: unsafe fn(*const ()) -> (u32, u32)
+///
+/// point: `unsafe fn(*const ()) -> (u32, u32)`
+///
 ///    returns: tuple, containing the top-leftmost coordinate of the component
-/// 
-/// draw: unsafe fn(*mut (), *mut RenderContext<S>) -> error::Result<()>
+///
+/// draw: `unsafe fn(*mut (), *mut RenderContext<S>) -> error::Result<()>`
 ///     draws the intitial componnent, called once at the begining of the component lifecycle
 ///
-/// update: Option<unsafe fn(*mut (), *mut RenderContext) -> error::Result<()>>
+/// update: `Option<unsafe fn(*mut (), *mut RenderContext) -> error::Result<()>>`
+///
 ///     updates the component.
-///     this is wrapped in an `Option`, because this could in theory be nonexstant. 
+///     this is wrapped in an `Option`, because this could in theory be nonexstant.
 ///     for example, in the case of a static component.
-/// 
-/// is_dyn: unsafe fn(*const ()) -> bool
+///
+/// is_dyn: `unsafe fn(*const ()) -> bool`
 ///     returns whether or not this component is dynamic
 ///
-/// component_id: unsafe fn(*const ()) -> ComponentId
+/// component_id: `unsafe fn(*const ()) -> ComponentId`
 ///     returns: component id of the current object
-/// 
-/// query_component: unsafe fn(*const (), ComponentId) -> Option<*const Dyn>
+///
+/// query_component: `unsafe fn(*const (), ComponentId) -> Option<*const Dyn>`
+///
 ///     queries a component with the ID matching the `ComponentId`, or `None` if this isn't the componet that controls it.
 ///     returns an immutable reference to that object
-/// 
-/// query_component_mut: unsafe fn(*mut (), ComponentId) -> Option<*mut Dyn> 
-///     like `query_component`, but returns a mutable reference to the object instead
+///
+/// query_component_mut: `unsafe fn(*mut (), ComponentId) -> Option<*mut Dyn>`
+///
+///     like  `query_component`, but returns a mutable reference to the object instead
 ///
 /// TODO: add drop implementation
 #[repr(C)]
@@ -112,7 +116,7 @@ where
 }
 
 /// Raw, FFI-compatable component
-/// this contains 2 fields, a `data` pointer, then a 
+/// this contains 2 fields, a `data` pointer, then a
 /// static reference to a `ComponentVTable`
 #[repr(C)]
 pub struct RawComponent<S: 'static, Dyn: ?Sized + 'static> {

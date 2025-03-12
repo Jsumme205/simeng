@@ -1,16 +1,16 @@
-use super::{RenderContext, BaseComponent};
+use super::{BaseComponent, RenderContext};
 use core::{
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
 
-pub struct AsyncRenderContext<'a, S> {
-    cx: &'a mut Context<'a>,
-    render_context: &'a mut RenderContext<S>
+pub struct AsyncRenderContext<'borrow, 'ctx, S> {
+    cx: &'borrow mut Context<'ctx>,
+    render_context: &'borrow mut RenderContext<S>,
 }
 
-impl<'a, S> core::ops::Deref for AsyncRenderContext<'a, S> {
+impl<'borrow, 'ctx, S> core::ops::Deref for AsyncRenderContext<'borrow, 'ctx, S> {
     type Target = RenderContext<S>;
 
     fn deref(&self) -> &Self::Target {
@@ -18,24 +18,33 @@ impl<'a, S> core::ops::Deref for AsyncRenderContext<'a, S> {
     }
 }
 
-impl<'a, S> core::ops::DerefMut for AsyncRenderContext<'a, S> {
-   fn deref_mut(&mut self) -> &mut Self::Target {
+impl<'borrow, 'ctx, S> core::ops::DerefMut for AsyncRenderContext<'borrow, 'ctx, S> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.render_context
-   }
+    }
 }
 
-pub trait AsyncComponent: BaseComponent  {
+impl<'borrow, 'ctx, S> AsyncRenderContext<'borrow, 'ctx, S> {
+    pub fn ctx(&mut self) -> &mut Context<'ctx> {
+        &mut *self.cx
+    }
+}
+
+pub trait AsyncComponent: BaseComponent {
     type Error;
     type State;
 
     fn poll_draw(
         self: Pin<&mut Self>,
-        ctx: &mut AsyncRenderContext<'_, Self::State>,
+        ctx: &mut AsyncRenderContext<'_, '_, Self::State>,
     ) -> Poll<Result<(), Self::Error>>;
 }
 
 pub trait AsyncComponentExt: AsyncComponent + Unpin {
-    fn draw<'a>(&'a mut self, render_context: &'a mut RenderContext<Self::State>) -> Draw<'a, Self> {
+    fn draw<'a>(
+        &'a mut self,
+        render_context: &'a mut RenderContext<Self::State>,
+    ) -> Draw<'a, Self> {
         Draw::new(self, render_context)
     }
 }
@@ -61,7 +70,7 @@ where
         }
     }
 
-    pub(super) fn project<'__pin>(self: Pin<&'__pin mut Self>) -> DrawProjection<'__pin, C, S> {
+    pub(super) fn project<'__pin>(self: Pin<&'__pin mut Self>) -> DrawProjection<'__pin, C> {
         let Self {
             component,
             render_context,
@@ -84,46 +93,48 @@ where
             component,
             render_context,
         } = self.project();
-        let mut ctx = AsyncRenderContext {
+        let mut ctx = AsyncRenderContext::<'_, '_, _> {
             render_context: &mut *render_context,
-            cx
-        }
+            cx: &mut *cx,
+        };
         component.poll_draw(&mut ctx)
     }
 }
 
-impl<C, S> AsyncComponentExt<S> for C where C: AsyncComponent<S> + Unpin {}
+impl<C> AsyncComponentExt for C where C: AsyncComponent + Unpin {}
 
-pub trait AsyncDynamicComponent<S>: AsyncComponent<S> {
+pub trait AsyncDynamicComponent: AsyncComponent {
     fn poll_update(
         self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        render_context: &mut RenderContext<S>,
-    ) -> Poll<Result<(), <Self as AsyncComponent<S>>::Error>>;
+        render_context: &mut AsyncRenderContext<'_, '_, <Self as AsyncComponent>::State>,
+    ) -> Poll<Result<(), <Self as AsyncComponent>::Error>>;
 }
 
-pub trait AsyncDynamicComponentExt<S>: AsyncDynamicComponent<S> + Unpin {
-    fn update<'a>(&'a mut self, ctx: &'a mut RenderContext<S>) -> Update<'a, S, Self> {
+pub trait AsyncDynamicComponentExt: AsyncDynamicComponent + Unpin {
+    fn update<'a>(
+        &'a mut self,
+        ctx: &'a mut RenderContext<<Self as AsyncComponent>::State>,
+    ) -> Update<'a, Self> {
         Update::new(self, ctx)
     }
 }
 
-impl<S, C> AsyncDynamicComponentExt<S> for C where C: AsyncDynamicComponent<S> + Unpin {}
+impl<C> AsyncDynamicComponentExt for C where C: AsyncDynamicComponent + Unpin {}
 
-pub struct Update<'a, S, C: ?Sized> {
+pub struct Update<'a, C: ?Sized + AsyncDynamicComponent> {
     component: &'a mut C,
-    ctx: &'a mut RenderContext<S>,
+    ctx: &'a mut RenderContext<C::State>,
 }
 
-impl<'a, C, S> Update<'a, S, C>
+impl<'a, C> Update<'a, C>
 where
-    C: AsyncDynamicComponent<S> + Unpin + ?Sized,
+    C: AsyncDynamicComponent + Unpin + ?Sized,
 {
-    fn new(component: &'a mut C, ctx: &'a mut RenderContext<S>) -> Self {
+    fn new(component: &'a mut C, ctx: &'a mut RenderContext<C::State>) -> Self {
         Self { component, ctx }
     }
 
-    pub(super) fn __project<'__pin>(self: Pin<&'__pin mut Self>) -> UpdateProjection<'__pin, C, S> {
+    pub(super) fn __project<'__pin>(self: Pin<&'__pin mut Self>) -> UpdateProjection<'__pin, C> {
         let Self { component, ctx } = self.get_mut();
         UpdateProjection {
             component: Pin::new(&mut **component),
@@ -132,25 +143,30 @@ where
     }
 }
 
-impl<'a, S, C> Future for Update<'a, S, C>
+impl<'a, C> Future for Update<'a, C>
 where
-    C: AsyncDynamicComponent<S> + Unpin + ?Sized,
+    C: AsyncDynamicComponent + Unpin + ?Sized,
 {
     type Output = Result<(), C::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let UpdateProjection { component, ctx } = self.__project();
-        component.poll_update(cx, ctx)
+        let mut ctx = AsyncRenderContext {
+            cx,
+            render_context: &mut *ctx,
+        };
+        component.poll_update(&mut ctx)
     }
 }
 
-pub(super) struct UpdateProjection<'__pin, C: ?Sized, S> {
+pub(super) struct UpdateProjection<'__pin, C: ?Sized + AsyncDynamicComponent> {
     component: Pin<&'__pin mut C>,
-    ctx: &'__pin mut RenderContext<S>,
+    ctx: &'__pin mut RenderContext<C::State>,
 }
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
+    use crate::component::BaseComponent;
     use core::{sync::atomic::AtomicUsize, task::Waker};
 
     use super::*;
@@ -159,25 +175,55 @@ mod tests {
 
     struct Component;
 
-    impl AsyncComponent<State> for Component {
+    impl BaseComponent for Component {
+        fn dimensions(&self) -> crate::Dimensions {
+            crate::Dimensions {
+                width: 0,
+                height: 0,
+            }
+        }
+
+        fn component_id(&self) -> yage_sys::component::ComponentId {
+            0
+        }
+
+        fn query_component(
+            &self,
+            id: yage_sys::component::ComponentId,
+        ) -> Option<&dyn BaseComponent> {
+            None
+        }
+
+        fn query_component_mut(
+            &mut self,
+            id: yage_sys::component::ComponentId,
+        ) -> Option<&mut dyn BaseComponent> {
+            None
+        }
+
+        fn topmost_left_point(&self) -> (u32, u32) {
+            (0, 0)
+        }
+    }
+
+    impl AsyncComponent for Component {
         type Error = ();
+        type State = State;
 
         fn poll_draw(
             self: Pin<&mut Self>,
-            _cx: &mut Context<'_>,
-            _render_context: &mut RenderContext<State>,
+            ctx: &mut AsyncRenderContext<'_, '_, State>,
         ) -> Poll<Result<(), Self::Error>> {
             println!("drawing...");
             Poll::Ready(Ok(()))
         }
     }
 
-    impl AsyncDynamicComponent<State> for Component {
+    impl AsyncDynamicComponent for Component {
         fn poll_update(
             self: Pin<&mut Self>,
-            _cx: &mut Context<'_>,
-            _render_context: &mut RenderContext<State>,
-        ) -> Poll<Result<(), <Self as AsyncComponent<State>>::Error>> {
+            ctx: &mut AsyncRenderContext<'_, '_, State>,
+        ) -> Poll<Result<(), <Self as AsyncComponent>::Error>> {
             static COUNT: AtomicUsize = AtomicUsize::new(1);
             println!("updating...");
             if COUNT.fetch_add(1, core::sync::atomic::Ordering::Relaxed) == 1 {

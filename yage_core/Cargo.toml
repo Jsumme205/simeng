@@ -1,14 +1,15 @@
 [package]
-name = "simeng_core"
+name = "yage_core"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-simeng_sys = { path = "/home/jack/Documents/yage/yage_sys" }
+yage_sys = { path = "/home/jack/Documents/yage/yage_sys" }
 
 
 [features]
-std = ["yage_sys/std"]
+std = []
 default = ["std"]
 async_support = []
 default_listeners = []
+unstable = []

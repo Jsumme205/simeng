@@ -219,6 +219,27 @@ where
         let raw = Self::from_ptr(ptr);
 
         let mut state = unsafe { (*raw.header).state.load(Ordering::Acquire) };
+
+        loop {
+            if state.is_completed() || state.is_closed() {
+                unsafe { Self::drop_waker(ptr) };
+                return;
+            }
+
+            if state.is_scheduled() {
+                match unsafe {
+                    (*raw.header).state.compare_exchange_weak(
+                        state,
+                        state,
+                        Ordering::AcqRel,
+                        Ordering::Acquire,
+                    )
+                } {
+                    Ok(_) => {}
+                    Err(s) => state = s,
+                }
+            }
+        }
     }
 
     unsafe fn wake_by_ref(ptr: *const ()) {}
@@ -242,7 +263,11 @@ where
 
     unsafe fn destroy(ptr: *mut ()) {}
 
-    unsafe fn run(ptr: *mut ()) -> bool {}
+    unsafe fn run(ptr: *mut ()) -> bool {
+        false
+    }
 
-    unsafe fn clone_waker(ptr: *const ()) -> RawWaker {}
+    unsafe fn clone_waker(ptr: *const ()) -> RawWaker {
+        todo!()
+    }
 }
