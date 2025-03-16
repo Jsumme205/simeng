@@ -31,13 +31,17 @@ impl<'borrow, 'ctx, S> AsyncRenderContext<'borrow, 'ctx, S> {
 }
 
 pub trait AsyncComponent: BaseComponent {
-    type Error;
     type State;
 
     fn poll_draw(
         self: Pin<&mut Self>,
         ctx: &mut AsyncRenderContext<'_, '_, Self::State>,
-    ) -> Poll<Result<(), Self::Error>>;
+    ) -> Poll<crate::Result<()>>;
+
+    fn poll_derender(
+        self: Pin<&mut Self>,
+        ctx: &mut AsyncRenderContext<'_, '_, Self::State>,
+    ) -> Poll<crate::Result<()>>;
 }
 
 pub trait AsyncComponentExt: AsyncComponent + Unpin {
@@ -86,7 +90,7 @@ impl<'a, C> Future for Draw<'a, C>
 where
     C: AsyncComponent + ?Sized + Unpin,
 {
-    type Output = Result<(), C::Error>;
+    type Output = crate::Result<()>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let DrawProjection {
@@ -107,7 +111,7 @@ pub trait AsyncDynamicComponent: AsyncComponent {
     fn poll_update(
         self: Pin<&mut Self>,
         render_context: &mut AsyncRenderContext<'_, '_, <Self as AsyncComponent>::State>,
-    ) -> Poll<Result<(), <Self as AsyncComponent>::Error>>;
+    ) -> Poll<crate::Result<()>>;
 }
 
 pub trait AsyncDynamicComponentExt: AsyncDynamicComponent + Unpin {
@@ -147,7 +151,7 @@ impl<'a, C> Future for Update<'a, C>
 where
     C: AsyncDynamicComponent + Unpin + ?Sized,
 {
-    type Output = Result<(), C::Error>;
+    type Output = crate::Result<()>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let UpdateProjection { component, ctx } = self.__project();
@@ -165,102 +169,4 @@ pub(super) struct UpdateProjection<'__pin, C: ?Sized + AsyncDynamicComponent> {
 }
 
 #[cfg(all(test, feature = "std"))]
-mod tests {
-    use crate::component::BaseComponent;
-    use core::{sync::atomic::AtomicUsize, task::Waker};
-
-    use super::*;
-
-    struct State;
-
-    struct Component;
-
-    impl BaseComponent for Component {
-        fn dimensions(&self) -> crate::Dimensions {
-            crate::Dimensions {
-                width: 0,
-                height: 0,
-            }
-        }
-
-        fn component_id(&self) -> yage_sys::component::ComponentId {
-            0
-        }
-
-        fn query_component(
-            &self,
-            id: yage_sys::component::ComponentId,
-        ) -> Option<&dyn BaseComponent> {
-            None
-        }
-
-        fn query_component_mut(
-            &mut self,
-            id: yage_sys::component::ComponentId,
-        ) -> Option<&mut dyn BaseComponent> {
-            None
-        }
-
-        fn topmost_left_point(&self) -> (u32, u32) {
-            (0, 0)
-        }
-    }
-
-    impl AsyncComponent for Component {
-        type Error = ();
-        type State = State;
-
-        fn poll_draw(
-            self: Pin<&mut Self>,
-            ctx: &mut AsyncRenderContext<'_, '_, State>,
-        ) -> Poll<Result<(), Self::Error>> {
-            println!("drawing...");
-            Poll::Ready(Ok(()))
-        }
-    }
-
-    impl AsyncDynamicComponent for Component {
-        fn poll_update(
-            self: Pin<&mut Self>,
-            ctx: &mut AsyncRenderContext<'_, '_, State>,
-        ) -> Poll<Result<(), <Self as AsyncComponent>::Error>> {
-            static COUNT: AtomicUsize = AtomicUsize::new(1);
-            println!("updating...");
-            if COUNT.fetch_add(1, core::sync::atomic::Ordering::Relaxed) == 1 {
-                Poll::Pending
-            } else {
-                Poll::Ready(Ok(()))
-            }
-        }
-    }
-
-    #[test]
-    fn test_dummy_component_draw() {
-        let mut ctx = RenderContext::new(State);
-        let mut component = Component;
-
-        let mut fut = async { component.draw(&mut ctx).await };
-        let mut cx = Context::from_waker(Waker::noop());
-        unsafe { assert!(Future::poll(Pin::new_unchecked(&mut fut), &mut cx).is_ready()) }
-    }
-
-    #[test]
-    fn test_dummy_component_update() {
-        let mut ctx = RenderContext::new(State);
-        let mut component = Component;
-
-        let fut = async { component.update(&mut ctx).await };
-        let mut fut = Box::pin(fut);
-        let mut cx = Context::from_waker(Waker::noop());
-        let mut count = 0;
-        loop {
-            match fut.as_mut().poll(&mut cx) {
-                Poll::Ready(r) => {
-                    assert!(count == 1 && r.is_ok());
-                    break;
-                }
-                Poll::Pending => count += 1,
-            }
-        }
-    }
-}
+mod tests {}

@@ -3,6 +3,7 @@
 
 use core::marker::PhantomData;
 
+use component::ComponentList;
 use window::Window;
 
 #[cfg(not(feature = "std"))]
@@ -15,8 +16,15 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 
 pub mod component;
+
 pub mod listeners;
+pub mod sync;
 pub mod window;
+
+pub mod errors;
+
+pub use errors::Result;
+use yage_util::list::LinkedList;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Dimensions {
@@ -33,10 +41,10 @@ pub struct EngineBuilder<S> {
 
 pub struct Engine<S> {
     window: Window<S>,
-    components: Vec<component::Vtable<S>>,
     state: Option<S>,
     executor: Executor,
     assets: Assets,
+    components: ComponentList<S>,
 }
 
 impl<S> Engine<S> {
@@ -60,10 +68,9 @@ impl<S> EngineBuilder<S> {
         }
     }
 
-    pub fn build(self) -> Result<Engine<S>, ()> {
+    pub fn build(self) -> crate::Result<Engine<S>> {
         Ok(Engine {
             window: todo!(),
-            components: Vec::new(),
             state: self.state,
             executor: Executor,
             assets: Assets,

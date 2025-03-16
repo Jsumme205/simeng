@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 yage_sys = { path = "/home/jack/Documents/yage/yage_sys" }
+yage_util = { path = "/home/jack/Documents/yage/yage_util" }
+yage_executor = { path = "/home/jack/Documents/yage/yage_executor" }
 
 
 [features]

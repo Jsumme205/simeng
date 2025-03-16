@@ -2,15 +2,13 @@
 
 use core::fmt::Debug;
 
-
 #[cfg(not(feature = "std"))]
 use alloc::boxed;
 
 #[cfg(feature = "std")]
 use std::boxed;
 
-
-/// the kind of error that occured, 
+/// the kind of error that occured,
 /// this is non-exhaustive, and subject to change in the future
 #[non_exhaustive]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -30,7 +28,6 @@ pub struct GlfwError {
     // the kind of error
     kind: ErrorKind,
     //#[cfg(feature = "")]
-    
     payload: Option<boxed::Box<dyn AsRef<str>>>,
 }
 
@@ -59,6 +56,10 @@ impl GlfwError {
     /// returns the kind of the error.
     pub const fn kind(&self) -> ErrorKind {
         self.kind
+    }
+
+    pub const fn payload(&self) -> Option<&boxed::Box<dyn AsRef<str>>> {
+        self.payload.as_ref()
     }
 }
 

@@ -1,27 +1,20 @@
-use core::marker::PhantomData;
+use core::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
-use yage_sys::component::ComponentVTable;
-
-//#[cfg(feature = "async_support")]
-pub mod stateless;
-pub mod sync;
-
-mod __glue;
+use alloc::sync::Arc;
+use yage_util::list::LinkedList;
 
 use crate::Dimensions;
 
+mod __glue;
+pub(crate) mod component_handle;
+pub mod stateless;
+pub mod sync;
+
 pub struct RenderContext<S> {
     state: S,
-    _marker: PhantomData<*mut S>,
-}
-
-impl<S> RenderContext<S> {
-    pub const fn new(state: S) -> Self {
-        Self {
-            state,
-            _marker: PhantomData,
-        }
-    }
 }
 
 pub trait BaseComponent
@@ -30,28 +23,41 @@ where
 {
     fn dimensions(&self) -> Dimensions;
 
-    fn topmost_left_point(&self) -> (u32, u32);
-
-    fn component_id(&self) -> yage_sys::component::ComponentId;
-
-    fn query_component(&self, id: yage_sys::component::ComponentId) -> Option<&dyn BaseComponent>;
-
-    fn query_component_mut(
-        &mut self,
-        id: yage_sys::component::ComponentId,
-    ) -> Option<&mut dyn BaseComponent>;
+    fn component_id(&self) -> usize;
 }
 
 pub trait Component: BaseComponent {
     type State;
-    fn draw(&mut self, ctx: &mut RenderContext<Self::State>) -> yage_sys::error::Result<()>;
+
+    fn draw(&mut self, ctx: &mut RenderContext<Self::State>) -> crate::Result<()>;
+
+    fn poll_derender(
+        self: Pin<&mut Self>,
+        ctx: &mut RenderContext<Self::State>,
+        cx: &mut Context<'_>,
+    ) -> Poll<crate::Result<()>>;
 }
 
 pub trait DynamicComponent: Component {
-    fn update(
-        &mut self,
-        ctx: &mut RenderContext<<Self as Component>::State>,
-    ) -> yage_sys::error::Result<()>;
+    fn redraw(&mut self, ctx: &mut RenderContext<Self::State>) -> crate::Result<()>;
 }
 
-pub type Vtable<S> = yage_sys::component::ComponentVTable<S, dyn BaseComponent>;
+pub struct ComponentList<S> {
+    inner: LinkedList<component_handle::ComponentHandle<S, dyn Component<State = S>>>,
+}
+
+impl<S> ComponentList<S> {
+    pub const fn new() -> Self {
+        Self {
+            inner: LinkedList::new(),
+        }
+    }
+
+    pub(crate) fn push<C>(&mut self, component: C)
+    where
+        C: Component<State = S> + 'static,
+    {
+        let comp = component_handle::handle!(dyn Component<S> => component);
+        self.inner.push_front(Arc::new(comp));
+    }
+}

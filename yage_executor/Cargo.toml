@@ -11,6 +11,8 @@ flume = "*"
 yage_task = { path = "/home/jack/Documents/yage/yage_task" }
 concurrent_queue = { path = "/home/jack/Documents/yage/concurrent_queue" }
 slab = { version = "0.4.9", default-features = false }
+yage_net = { path = "/home/jack/Documents/yage/yage_net" }
+yage_util = { path = "/home/jack/Documents/yage/yage_util" }
 
 [features]
 std = ["slab/std", "yage_task/std"]
