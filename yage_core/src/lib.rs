@@ -35,8 +35,8 @@ pub struct Dimensions {
 pub struct Executor;
 pub struct Assets;
 
-pub struct EngineBuilder<S> {
-    state: Option<S>,
+pub struct EngineBuilder<'a, S> {
+    state: Option<Box<dyn Future<Output = crate::Result<S>> + 'a>>,
 }
 
 pub struct Engine<S> {
@@ -54,11 +54,11 @@ impl<S> Engine<S> {
 }
 
 impl<S> EngineBuilder<S> {
-    pub fn with_state<F>(&mut self, f: F) -> &mut Self
+    pub fn with_state<F>(mut self, f: F) -> Self
     where
-        F: FnOnce(&mut Assets) -> S,
+        F: AsyncFnOnce(&mut Assets) -> S,
     {
-        match &mut self.state {
+        match self.state {
             Some(_) => self,
             None => {
                 let state = f(&mut Assets);
@@ -68,11 +68,41 @@ impl<S> EngineBuilder<S> {
         }
     }
 
+    pub fn try_with_state<F>(mut self, f: F) -> Self 
+    where 
+        F: AsyncFnOnce(&mut Assets) -> crate::Result<S>
+    {
+        match self.state {
+            Some(_) => self,
+            None => {
+                let state = f(&mut Assets);
+                self.state = Some(state);
+                self
+            }
+        }
+    }
+    
+
     pub fn build(self) -> crate::Result<Engine<S>> {
+        let executor = Executor;
+        let state = self.state;
+        let h = executor.spawn(async move {
+            match self.state {
+                Some(state) => {
+                    state.await?
+                },
+                None => {
+                    Err(crate::Error::new(crate::errors::ErrorKind::StateNotInitialized))
+                }
+            }
+        });
+        
+        let state = h.join()?;
+        
         Ok(Engine {
             window: todo!(),
-            state: self.state,
-            executor: Executor,
+            state: Some(state),
+            executor,
             assets: Assets,
         })
     }
